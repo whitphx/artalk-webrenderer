@@ -17,7 +17,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from gtts import gTTS
 
-from app.web_api import ARTalkWebConfig, ARTalkWebEngine, available_styles, write_web_artifacts
+from app.runtime import ARTalkRuntime, ARTalkRuntimeConfig, available_styles
+from server.artifacts import export_browser_gaussian_artifacts, write_animation_artifacts
 
 
 MESH_RENDER_MODE = "mesh"
@@ -66,8 +67,8 @@ def get_artalk_engine(device: str):
     key = (str(asset_dir.resolve()), device)
     with _artalk_engines_lock:
         if key not in _artalk_engines:
-            _artalk_engines[key] = ARTalkWebEngine(
-                ARTalkWebConfig(asset_dir=asset_dir, device=device)
+            _artalk_engines[key] = ARTalkRuntime(
+                ARTalkRuntimeConfig(asset_dir=asset_dir, device=device)
             )
         return _artalk_engines[key]
 
@@ -80,7 +81,7 @@ def get_gagavatar_runtime():
         raise RuntimeError("GAGAVATAR_MODEL_PATH is required for GAGAvator render modes.")
     with _gagavatar_runtime_lock:
         if _gagavatar_runtime is None:
-            from core.web_api import GAGAvatarRuntime, GAGAvatarRuntimeConfig
+            from core.runtime import GAGAvatarRuntime, GAGAvatarRuntimeConfig
 
             _gagavatar_runtime = GAGAvatarRuntime(
                 GAGAvatarRuntimeConfig(
@@ -201,11 +202,10 @@ def run_job(job_id: str, *, input_path: str, style_id: str, clip_length: int, de
             shape_code=shape_code,
         )
         write_state(path, {"id": job_id, "status": "running", "stage": "writing mesh artifacts"})
-        metadata = write_web_artifacts(result, path)
+        metadata = write_animation_artifacts(result, path)
         if render_mode == BROWSER_GAUSSIAN_RENDER_MODE:
             write_state(path, {"id": job_id, "status": "running", "stage": "exporting gaussian artifacts"})
-            export = gagavatar.export_gaussian_artifacts(result.motions, path, fps=result.fps)
-            metadata.update(export.metadata)
+            metadata.update(export_browser_gaussian_artifacts(gagavatar, result.motions, path, fps=result.fps))
             metadata["renderMode"] = BROWSER_GAUSSIAN_RENDER_MODE
         elif render_mode == GAGAVATAR_RENDER_MODE:
             write_state(path, {"id": job_id, "status": "running", "stage": "rendering GAGAvator video"})

@@ -6,7 +6,7 @@ import importlib.util
 
 missing = [
     name
-    for name in ("app.web_api", "core.web_api")
+    for name in ("app.runtime", "core.runtime")
     if importlib.util.find_spec(name) is None
 ]
 if missing:
