@@ -1,0 +1,7 @@
+node_modules/
+dist/
+render_results/
+public/models/*.onnx
+__pycache__/
+*.pyc
+.env
